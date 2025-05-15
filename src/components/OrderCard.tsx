@@ -4,15 +4,16 @@ import { Order, OrderItem } from '../types';
 import { useAppOrders } from '../hooks/useAppOrders';
 import { useAppMedicines } from '../hooks/useAppMedicines';
 import { toastService } from '../lib/toastService';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface OrderCardProps {
   order: Order;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
-  const { updateOrderItemQuantity, removeOrderItem, deleteOrder } = useAppOrders();
+  const { updateOrderItemQuantity, removeOrderItem, cancelOrder } = useAppOrders();
   const { incrementMedicineStock } = useAppMedicines();
+  
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>(() =>
     order.items.reduce((acc, item) => {
       acc[item.medicineId] = item.quantity;
@@ -20,122 +21,133 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     }, {} as Record<string, number>)
   );
 
-  const handleLocalQuantityChange = (medicineId: string, newQuantityStr: string) => {
-    const newQuantity = parseInt(newQuantityStr, 10);
-    setItemQuantities(prev => ({ ...prev, [medicineId]: isNaN(newQuantity) || newQuantity < 0 ? 0 : newQuantity }));
-  };
+  useEffect(() => {
+    setItemQuantities(
+      order.items.reduce((acc, item) => {
+        acc[item.medicineId] = item.quantity;
+        return acc;
+      }, {} as Record<string, number>)
+    );
+  }, [order.items]);
 
-  const handleUpdateQuantity = (item: OrderItem) => {
-    const originalQuantity = item.quantity;
-    const newQuantity = itemQuantities[item.medicineId];
+  const handleItemQuantityChange = (medicineId: string, newQuantityString: string) => {
+    const currentItem = order.items.find(item => item.medicineId === medicineId);
+    if (!currentItem) return;
+
+    const originalQuantity = currentItem.quantity;
+    const newQuantity = parseInt(newQuantityString, 10);
 
     if (isNaN(newQuantity) || newQuantity < 0) {
-      toastService.error("Invalid quantity.");
-      setItemQuantities(prev => ({ ...prev, [item.medicineId]: originalQuantity }));
+      toastService.error("Please enter a valid quantity (0 or more).");
+      setItemQuantities(prev => ({ ...prev, [medicineId]: originalQuantity })); 
       return;
     }
+
+    setItemQuantities(prev => ({ ...prev, [medicineId]: newQuantity }));
 
     if (newQuantity === originalQuantity) return;
 
-    updateOrderItemQuantity(order.id, item.medicineId, newQuantity);
-
-    const quantityDifference = originalQuantity - newQuantity;
-
-    if (quantityDifference > 0) {
-      incrementMedicineStock(item.medicineId, quantityDifference);
-      toastService.success(`Stock for ${item.medicineName} increased by ${quantityDifference}.`);
-    } else if (quantityDifference < 0) {
-      toastService.info(`Quantity for ${item.medicineName} updated in order.`);
-    }
-    
-    if (newQuantity <= 0) {
-        toastService.info(`${item.medicineName} removed from order as quantity set to 0.`);
+    if (newQuantity === 0) {
+      removeOrderItem(order.id, medicineId);
+      incrementMedicineStock(medicineId, originalQuantity);
+      toastService.warning(`Item ${currentItem.medicineName} removed. Stock restored by ${originalQuantity}.`);
     } else {
-        toastService.success(`Quantity for ${item.medicineName} updated to ${newQuantity}.`);
+      updateOrderItemQuantity(order.id, medicineId, newQuantity);
+      const quantityDifference = originalQuantity - newQuantity;
+      if (quantityDifference > 0) {
+        incrementMedicineStock(medicineId, quantityDifference);
+        toastService.success(`Quantity of ${currentItem.medicineName} updated to ${newQuantity}. Stock restored by ${quantityDifference}.`);
+      } else {
+        toastService.success(`Quantity of ${currentItem.medicineName} updated to ${newQuantity}.`);
+      }
     }
   };
 
-  const handleRemoveItem = (item: OrderItem) => {
-    const quantityToRestore = item.quantity;
-    removeOrderItem(order.id, item.medicineId);
-    incrementMedicineStock(item.medicineId, quantityToRestore);
-    toastService.success(`${item.medicineName} (Qty: ${quantityToRestore}) removed from order and stock restored.`);
-    setItemQuantities(prev => {
-        const newState = {...prev};
-        delete newState[item.medicineId];
-        return newState;
-    });
+  const handleRemoveItem = (medicineId: string, medicineName: string) => {
+    const itemToRemove = order.items.find(item => item.medicineId === medicineId);
+    if (itemToRemove) {
+      removeOrderItem(order.id, medicineId);
+      incrementMedicineStock(medicineId, itemToRemove.quantity);
+      toastService.success(`Removed ${medicineName} (Qty: ${itemToRemove.quantity}). Stock restored.`);
+    } else {
+      removeOrderItem(order.id, medicineId);
+      toastService.success(`Removed ${medicineName}.`);
+    }
   };
 
-  const handleDeleteOrder = () => {
-    if (order.status !== 'Pending') {
-      toastService.error("Only pending orders can be deleted.");
-      return;
+  const handleCancelOrder = () => {
+    if (order.status === "Pending") {
+      const itemsToRestock = [...order.items];
+      cancelOrder(order.id);
+      itemsToRestock.forEach(item => {
+        incrementMedicineStock(item.medicineId, item.quantity);
+      });
+      toastService.success(`Order ${order.id} cancelled. All items (total ${itemsToRestock.length}) restocked.`);
+    } else {
+      toastService.error(`Order ${order.id} cannot be cancelled. Status is ${order.status}.`);
     }
-    order.items.forEach(item => {
-      incrementMedicineStock(item.medicineId, item.quantity);
-    });
-    deleteOrder(order.id);
-    toastService.success(`Order #${order.id} has been deleted and stock restored.`);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pending': return 'bg-yellow-400 text-yellow-800';
-      case 'Processing': return 'bg-blue-400 text-blue-800';
-      case 'Shipped': return 'bg-green-400 text-green-800';
-      case 'Delivered': return 'bg-purple-400 text-purple-800';
-      case 'Cancelled': return 'bg-red-400 text-red-800';
-      default: return 'bg-gray-300 text-gray-700';
-    }
+  const getStatusColor = (status: string): string => {
+    if (status === "Pending") return "bg-yellow-100 text-yellow-800";
+    if (status === "Processing") return "bg-blue-100 text-blue-800";
+    if (status === "Shipped") return "bg-green-100 text-green-800";
+    if (status === "Delivered") return "bg-purple-100 text-purple-800";
+    if (status === "Cancelled") return "bg-red-100 text-red-800";
+    return "bg-gray-100 text-gray-800";
   };
 
   return (
-    <div className="bg-white p-5 rounded-lg shadow-md border border-gray-200">
-      <div className="flex justify-between items-center mb-3">
-        <h4 className="text-lg font-semibold text-gray-700">Order ID: {order.id}</h4>
-        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-          {order.status}
-        </span>
+    <div className="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="text-lg font-semibold text-indigo-700">Order ID: {order.id}</h3>
+          <span className={`text-sm font-medium px-2.5 py-0.5 rounded-full ${getStatusColor(order.status)}`}>
+            {order.status}
+          </span>
+        </div>
+        {order.status === "Pending" && (
+          <button
+            onClick={handleCancelOrder}
+            className="px-3 py-1.5 bg-red-500 text-white text-xs font-medium rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1 transition-colors"
+            aria-label="Cancel Order"
+          >
+            Cancel Order
+          </button>
+        )}
       </div>
-      {order.status === 'Pending' && (
-        <button
-          onClick={handleDeleteOrder}
-          className="mb-3 w-full px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500"
-        >
-          Delete Entire Order
-        </button>
-      )}
-      <ul className="space-y-3">
-        {order.items.map(item => (
-          <li key={item.medicineId} className="p-3 bg-gray-50 rounded-md border border-gray-100">
-            <div className="flex justify-between items-center">
+      
+      {order.items.length > 0 ? (
+        <ul className="space-y-2.5 mb-3">
+          {order.items.map(item => (
+            <li key={item.medicineId} className="flex justify-between items-center border-b border-gray-100 py-2 last:border-b-0">
               <div>
-                <p className="text-sm font-medium text-gray-800">{item.medicineName}</p>
-                <p className="text-xs text-gray-500">ID: {item.medicineId}</p>
+                <span className="font-medium text-sm text-gray-700">{item.medicineName}</span>
+                <span className="text-xs text-gray-500 block">ID: {item.medicineId}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <input 
-                  type="number" 
+                  type="number"
                   value={itemQuantities[item.medicineId] !== undefined ? itemQuantities[item.medicineId] : item.quantity}
-                  onChange={(e) => handleLocalQuantityChange(item.medicineId, e.target.value)}
-                  onBlur={() => handleUpdateQuantity(item)}
-                  min="0" 
-                  className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(e) => handleItemQuantityChange(item.medicineId, e.target.value)}
+                  className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-indigo-500"
+                  min="0"
                 />
                 <button 
-                  onClick={() => handleRemoveItem(item)} 
-                  className="px-2.5 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400"
+                  onClick={() => handleRemoveItem(item.medicineId, item.medicineName)}
+                  className="text-red-500 hover:text-red-700 transition-colors"
+                  aria-label={`Remove ${item.medicineName}`}
                 >
-                  Remove Item
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
                 </button>
               </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {order.items.length === 0 && (
-        <p className="text-sm text-gray-500 italic text-center py-2">This order is empty. It will be automatically removed.</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-gray-400 italic">No items in this order.</p>
       )}
     </div>
   );

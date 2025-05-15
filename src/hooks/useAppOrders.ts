@@ -7,6 +7,7 @@ export const useAppOrders = () => {
   const updateOrderItemQuantity = useOrderStore((state) => state.updateOrderItemQuantity);
   const removeOrderItem = useOrderStore((state) => state.removeOrderItem);
   const deleteOrder = useOrderStore((state) => state.deleteOrder);
+  const cancelOrder = useOrderStore((state) => state.cancelOrder);
 
   return {
     orders,
@@ -15,5 +16,8 @@ export const useAppOrders = () => {
     updateOrderItemQuantity,
     removeOrderItem,
     deleteOrder,
+    cancelOrder,
   };
-}; 
+};
+
+export default useAppOrders; 
