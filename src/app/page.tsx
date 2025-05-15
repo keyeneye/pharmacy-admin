@@ -1,103 +1,135 @@
-import Image from "next/image";
+"use client"; // Top-level page needs to be client component for useState and handlers
 
-export default function Home() {
+import AddToOrderModal from '../components/AddToOrderModal';
+import OrdersSidebar from '../components/OrdersSidebar';
+import MedicineView from '../components/MedicineView';
+import RestockModal from '../components/RestockModal';
+import { toastService } from '../lib/toastService';
+import { Order } from '../types'; // Medicine, OrderItem might not be needed if stores handle types
+
+// Import custom hooks
+import { useAppMedicines } from '../hooks/useAppMedicines';
+import { useAppOrders } from '../hooks/useAppOrders';
+import { useAppUI } from '../hooks/useAppUI';
+
+export default function HomePage() {
+  const appMedicinesHook = useAppMedicines(); // Get the whole hook object first
+
+  const { 
+    medicines, 
+    decrementMedicineStock, 
+    incrementMedicineStock, 
+    restockMedicine, 
+    trashMedicine, 
+    restoreMedicine, 
+    permanentlyDeleteMedicine 
+  } = appMedicinesHook; // Destructure after logging
+  
+  const { orders, addOrder, addMedicineToOrder } = useAppOrders();
+  const { 
+    isModalOpen, selectedMedicineInfo, openModal, closeModal,
+    isRestockModalOpen, restockMedicineInfo, openRestockModal, closeRestockModal
+  } = useAppUI();
+
+  const handleTrashMedicine = (medicineId: string, medicineName: string) => {
+    if (typeof trashMedicine === 'function') {
+      trashMedicine(medicineId); 
+      toastService.info(`${medicineName} has been moved to trash.`);
+    } else {
+      console.error("[HomePage] handleTrashMedicine: trashMedicine action is undefined!");
+      toastService.error("Error: Trash action is not available.");
+    }
+  };
+
+  const handleRestoreMedicine = (medicineId: string, medicineName: string) => {
+    if (typeof restoreMedicine === 'function') {
+      restoreMedicine(medicineId);
+      toastService.success(`${medicineName} has been restored.`);
+    } else {
+      console.error("[HomePage] handleRestoreMedicine: restoreMedicine action is undefined!");
+      toastService.error("Error: Restore action is not available.");
+    }
+  };
+
+  const handlePermanentlyDeleteMedicine = (medicineId: string, medicineName: string) => {
+    if (typeof permanentlyDeleteMedicine === 'function') {
+      permanentlyDeleteMedicine(medicineId);
+      toastService.error(`${medicineName} has been permanently deleted.`);
+    } else {
+      console.error("[HomePage] handlePermanentlyDeleteMedicine: permanentlyDeleteMedicine action is undefined!");
+      toastService.error("Error: Permanent delete action is not available.");
+    }
+  };
+
+  const handleOpenModal = (medicineId: string, medicineName: string, medicineStock: number | string) => {
+    openModal({ id: medicineId, name: medicineName, stock: medicineStock });
+  };
+
+  const handleOpenRestockModal = (medicineId: string, medicineName: string) => {
+    openRestockModal({ id: medicineId, name: medicineName });
+  };
+
+  const handleAddToExistingOrder = (orderId: string, medicineId: string, medicineName: string, quantity: number) => {
+    addMedicineToOrder(orderId, medicineId, medicineName, quantity);
+    decrementMedicineStock(medicineId, quantity);
+    toastService.success(`Added ${medicineName} (Qty: ${quantity}) to Order #${orderId}`);
+    closeModal(); 
+  };
+
+  const handleCreateNewOrderAndAdd = (medicineId: string, medicineName: string, quantity: number) => {
+    const newOrderId = `ord${Date.now().toString().slice(-3)}`;
+    const newOrder: Order = { 
+      id: newOrderId,
+      status: "Pending",
+      items: [{ medicineId, medicineName, quantity }]
+    };
+    addOrder(newOrder);
+    decrementMedicineStock(medicineId, quantity);
+    toastService.success(`Created Order #${newOrderId} & added ${medicineName} (Qty: ${quantity}).`);
+    closeModal(); 
+  };
+
+  const handleConfirmRestock = (medicineId: string, quantityToAdd: number) => {
+    restockMedicine(medicineId, quantityToAdd);
+    const medicineName = restockMedicineInfo?.name || 'Medicine';
+    toastService.success(`Restocked ${medicineName} by ${quantityToAdd}.`);
+    closeRestockModal();
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="flex h-screen bg-gray-100">
+      <OrdersSidebar orders={orders} />
+      <MedicineView 
+        allMedicines={medicines} 
+        onOpenAddToOrderModal={handleOpenModal} 
+        onOpenRestockModal={handleOpenRestockModal}
+        onTrashMedicine={handleTrashMedicine} 
+        onRestoreMedicine={handleRestoreMedicine} 
+        onPermanentlyDeleteMedicine={handlePermanentlyDeleteMedicine} 
+      />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      {isModalOpen && selectedMedicineInfo && (
+        <AddToOrderModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          medicineName={selectedMedicineInfo.name}
+          medicineId={selectedMedicineInfo.id}
+          medicineStock={selectedMedicineInfo.stock}
+          orders={orders}
+          onAddToExistingOrder={handleAddToExistingOrder}
+          onAddNewOrder={handleCreateNewOrderAndAdd}
+        />
+      )}
+
+      {isRestockModalOpen && restockMedicineInfo && (
+        <RestockModal
+          isOpen={isRestockModalOpen}
+          onClose={closeRestockModal}
+          medicineName={restockMedicineInfo.name}
+          medicineId={restockMedicineInfo.id}
+          onConfirmRestock={handleConfirmRestock}
+        />
+      )}
     </div>
   );
 }
