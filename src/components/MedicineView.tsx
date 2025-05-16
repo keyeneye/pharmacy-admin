@@ -129,7 +129,7 @@ const MedicineView: React.FC<MedicineViewProps> = ({
               value={searchTerm}
               onChange={handleSearchInputChange}
               onFocus={() => searchTerm.trim() && suggestions.length > 0 && setShowSuggestions(true)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow duration-150 ease-in-out pr-10"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow duration-150 ease-in-out pr-10 text-gray-800"
             />
             {searchTerm && (
               <button 

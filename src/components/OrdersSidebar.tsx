@@ -14,7 +14,6 @@ const OrdersSidebar: React.FC<OrdersSidebarProps> = ({ orders }) => {
     return [...orders].sort((a, b) => {
       const statusAIndex = statusSortOrder.indexOf(a.status as OrderStatus);
       const statusBIndex = statusSortOrder.indexOf(b.status as OrderStatus);
-      // Handle unknown statuses by putting them at the end if necessary, though our types should prevent this.
       return (statusAIndex === -1 ? 999 : statusAIndex) - (statusBIndex === -1 ? 999 : statusBIndex);
     });
   }, [orders]);
@@ -68,7 +67,7 @@ const OrdersSidebar: React.FC<OrdersSidebarProps> = ({ orders }) => {
           placeholder="Search by Order ID..."
           value={orderSearchTerm}
           onChange={handleOrderSearchChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm pr-10"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm pr-10 text-gray-800"
         />
         {orderSearchTerm && (
           <button 
