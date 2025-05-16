@@ -1,8 +1,14 @@
 import { showToast } from 'nextjs-toast-notify';
 
-// Using 'any' for options type as ToastOptions might not be directly exportable
-// or its exact structure is not critical for this wrapper.
-const defaultOptions: any = {
+interface ToastOptions {
+  duration?: number;
+  progress?: boolean;
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  sound?: boolean;
+  transition?: 'fadeIn' | 'swingInverted' | 'bounceIn' | 'popUp' | 'bottomToTopBounce' | 'bounceInDown';
+}
+
+const defaultOptions: ToastOptions = {
   duration: 3000, // Adjusted default duration
   progress: true,
   position: 'bottom-right', // Default position
@@ -10,19 +16,19 @@ const defaultOptions: any = {
   // transition: 'bounceIn', // Example, add if you have a preferred default
 };
 
-const notifySuccess = (message: string, options?: any) => {
+const notifySuccess = (message: string, options?: ToastOptions) => {
   showToast.success(message, { ...defaultOptions, ...options });
 };
 
-const notifyError = (message: string, options?: any) => {
+const notifyError = (message: string, options?: ToastOptions) => {
   showToast.error(message, { ...defaultOptions, ...options });
 };
 
-const notifyInfo = (message: string, options?: any) => {
+const notifyInfo = (message: string, options?: ToastOptions) => {
   showToast.info(message, { ...defaultOptions, ...options });
 };
 
-const notifyWarning = (message: string, options?: any) => {
+const notifyWarning = (message: string, options?: ToastOptions) => {
   showToast.warning(message, { ...defaultOptions, ...options });
 };
 

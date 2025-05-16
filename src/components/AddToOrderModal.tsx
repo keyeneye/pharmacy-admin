@@ -92,7 +92,7 @@ const AddToOrderModal: React.FC<AddToOrderModalProps> = ({
           }
         `}</style>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">Add "{medicineName}"</h2>
+          <h2 className="text-2xl font-semibold text-gray-800">Add &quot;{medicineName}&quot;</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
         </div>
 

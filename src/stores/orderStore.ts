@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Order, OrderItem } from '../types';
+import { Order } from '../types';
 import { initialOrders } from '../lib/dummyData';
 
 interface OrderState {

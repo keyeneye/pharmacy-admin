@@ -18,7 +18,6 @@ export default function HomePage() {
   const { 
     medicines, 
     decrementMedicineStock, 
-    incrementMedicineStock, 
     restockMedicine, 
     trashMedicine, 
     restoreMedicine, 

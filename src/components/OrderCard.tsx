@@ -1,6 +1,6 @@
 "use client";
 
-import { Order, OrderItem } from '../types';
+import { Order } from '../types';
 import { useAppOrders } from '../hooks/useAppOrders';
 import { useAppMedicines } from '../hooks/useAppMedicines';
 import { toastService } from '../lib/toastService';
