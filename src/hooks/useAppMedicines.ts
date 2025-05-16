@@ -8,7 +8,6 @@ export const useAppMedicines = () => {
   const trashMedicine = useMedicineStore((state) => state.trashMedicine);
   const restoreMedicine = useMedicineStore((state) => state.restoreMedicine);
   const permanentlyDeleteMedicine = useMedicineStore((state) => state.permanentlyDeleteMedicine);
-  // Future actions would be destructured here, e.g.:
   // const { addMedicine, updateMedicineStock } = useMedicineStore();
 
   return {

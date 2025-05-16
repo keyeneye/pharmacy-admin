@@ -10,8 +10,6 @@ interface MedicineState {
   trashMedicine: (medicineId: string) => void;
   restoreMedicine: (medicineId: string) => void;
   permanentlyDeleteMedicine: (medicineId: string) => void;
-  // Example for future: addMedicine: (medicine: Medicine) => void;
-  // Example for future: updateMedicineStock: (medicineId: string, newStock: number | string) => void;
 }
 
 export const useMedicineStore = create<MedicineState>((set) => ({

@@ -13,7 +13,7 @@ const defaultOptions: ToastOptions = {
   progress: true,
   position: 'bottom-right', // Default position
   sound: false, // Defaulting to false, can be overridden
-  // transition: 'bounceIn', // Example, add if you have a preferred default
+  // transition: 'bounceIn',
 };
 
 const notifySuccess = (message: string, options?: ToastOptions) => {
