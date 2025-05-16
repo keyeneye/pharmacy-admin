@@ -79,12 +79,4 @@ export const useMedicineStore = create<MedicineState>((set) => ({
       // Ensure we only delete if it's actually in 'trashed' state, though UI should control this
       medicines: state.medicines.filter(med => !(med.id === medicineIdToDelete && med.status === 'trashed')),
     })),
-  // Example for future:
-  // addMedicine: (medicine) => set((state) => ({ medicines: [...state.medicines, medicine] })),
-  // updateMedicineStock: (medicineId, newStock) =>
-  //   set((state) => ({
-  //     medicines: state.medicines.map((med) =>
-  //       med.id === medicineId ? { ...med, stock: newStock } : med
-  //     ),
-  //   })),
 })); 
